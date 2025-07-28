@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Person of the Day</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      font-family: 'Poppins', Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #fff;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      max-width: 400px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+      z-index: 10; /* Above fireworks canvas */
+    }
+
+    h1 {
+      font-size: 2.8rem;
+      margin-bottom: 20px;
+      letter-spacing: 0.1em;
+      animation: glow 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow {
+      from {
+        text-shadow: 0 0 10px #fff, 0 0 30px #a18cd1, 0 0 50px #764ba2;
+      }
+      to {
+        text-shadow: 0 0 20px #fff, 0 0 40px #9f7aea, 0 0 70px #6a42cc;
+      }
+    }
+
+    img {
+      width: 100%;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 1s ease, transform 1s ease;
+    }
+
+    img.loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .caption {
+      margin-top: 15px;
+      font-weight: 600;
+      font-size: 1.2rem;
+      color: #eee;
+      text-shadow: 0 0 5px rgba(0,0,0,0.4);
+    }
+
+    @media (max-width: 450px) {
+      .container {
+        padding: 20px 25px;
+        max-width: 90vw;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+    }
+
+    /* Fullscreen canvas for fireworks */
+    #fireworksCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none; /* So it doesn’t block clicks */
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="fireworksCanvas"></canvas>
+
+  <div class="container">
+    <h1>👑 Person of the Day 👑</h1>
+    <img id="randomImage" src="" alt="Person of the Day" />
+    <div class="caption" id="personName"></div>
+  </div>
+
+  <script>
+    // Person data
+    const people = [
+      {
+        name: "Jake",
+        image:
+          "https://media.licdn.com/dms/image/v2/D5603AQF2Mxo__hFuTg/profile-displayphoto-crop_800_800/B56ZfQ6OpZGoAM-/0/1751556616198?e=1756339200&v=beta&t=aaUQKnSfBrEq41ob6ob-73v1QikQhEjUCF97WKgPdII",
+      },
+      {
+        name: "Josh",
+        image:
+          "https://media.licdn.com/dms/image/v2/C4D03AQHSMPD32qcL-Q/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1594858007083?e=1756339200&v=beta&t=NIgiF2IyBWQ-qd_ou059jr9E3sPk7-qD3s3wDQBU6xg",
+      },
+    ];
+
+    // Select and display random person
+    const randomIndex = Math.floor(Math.random() * people.length);
+    const selectedPerson = people[randomIndex];
+
+    const img = document.getElementById("randomImage");
+    const nameDiv = document.getElementById("personName");
+
+    img.src = selectedPerson.image;
+    img.alt = selectedPerson.name;
+    nameDiv.textContent = selectedPerson.name;
+
+    img.onload = () => {
+      img.classList.add("loaded");
+    };
+
+    // Fireworks code
+    const canvas = document.getElementById('fireworksCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let W, H;
+    function resize() {
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W;
+      canvas.height = H;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Firework particle class
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.radius = Math.random() * 2 + 1;
+        this.color = color;
+        this.speed = Math.random() * 5 + 2;
+        this.angle = Math.random() * 2 * Math.PI;
+        this.vx = Math.cos(this.angle) * this.speed;
+        this.vy = Math.sin(this.angle) * this.speed;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.015 + 0.01;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= this.decay;
+        if (this.alpha < 0) this.alpha = 0;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 10;
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // Firework class
+    class Firework {
+      constructor() {
+        this.x = Math.random() * W;
+        this.y = Math.random() * H * 0.5 + H * 0.2; // firework bursts in upper half-ish
+        this.particles = [];
+        this.color = `hsl(${Math.random() * 360}, 100%, 70%)`;
+        this.particleCount = 30 + Math.floor(Math.random() * 30);
+
+        for(let i = 0; i < this.particleCount; i++) {
+          this.particles.push(new Particle(this.x, this.y, this.color));
+        }
+
+        this.done = false;
+      }
+
+      update() {
+        this.particles.forEach(p => p.update());
+        this.particles = this.particles.filter(p => p.alpha > 0);
+        if(this.particles.length === 0) {
+          this.done = true;
+        }
+      }
+
+      draw() {
+        this.particles.forEach(p => p.draw());
+      }
+    }
+
+    let fireworks = [];
+    let maxFireworks = 5;
+    let frames = 0;
+
+    function animate() {
+      ctx.clearRect(0, 0, W, H);
+      fireworks.forEach(fw => {
+        fw.update();
+        fw.draw();
+      });
+
+      // Remove finished fireworks
+      fireworks = fireworks.filter(fw => !fw.done);
+
+      // Add new fireworks until max reached (only on first 150 frames)
+      if(frames < 150 && fireworks.length < maxFireworks) {
+        fireworks.push(new Firework());
+      }
+
+      frames++;
+
+      if (frames < 200 || fireworks.length > 0) {
+        requestAnimationFrame(animate);
+      } else {
+        // Clear canvas completely when done
+        ctx.clearRect(0, 0, W, H);
+      }
+    }
+
+    animate();
+  </script>
+
+</body>
+</html>
+
